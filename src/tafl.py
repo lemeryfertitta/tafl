@@ -240,6 +240,9 @@ class Board:
             if selected_piece_coords[0] == piece.x and selected_piece_coords[1] == piece.y:
                 piece.x = destination_coords[0]
                 piece.y = destination_coords[1]
+                capture_coords = self.check_for_captures(destination_coords,piece.player)
+                for coords in capture_coords:
+                    self.remove_piece(coords)
                 break
         return True
     
@@ -250,39 +253,114 @@ class Board:
             if selected_piece_coords[0] == piece.x and selected_piece_coords[1] == piece.y:
                 return piece.clone()
         return None
+
+    def remove_piece(self, selected_piece_coords):
+        for piece in self.game_pieces:
+            if selected_piece_coords[0] == piece.x and selected_piece_coords[1] == piece.y:
+                self.game_pieces.remove(piece)
     
     def check_for_captures(self, selected_piece_coords, player):
         """check_for_captures
         given a coordinate of a piece, checks for captures pieces in its vicinity. """
+        capture_coords = [] # a list of capture coords will be returned
+        special_coords = [(0, 0), (0, 8), (8, 0), (8, 8), (4, 4)]
         neighbor_coords = [(selected_piece_coords[0]+1, selected_piece_coords[1]),
                            (selected_piece_coords[0]-1, selected_piece_coords[1]),
                            (selected_piece_coords[0], selected_piece_coords[1]+1),
                            (selected_piece_coords[0], selected_piece_coords[1]-1)]
-        
         neighbor_of_neighbor_coords = [(selected_piece_coords[0]+2, selected_piece_coords[1]),
-                                       (selected_piece_coords[0]-2, selected_piece_coords[1]),
-                                       (selected_piece_coords[0], selected_piece_coords[1]+2),
-                                       (selected_piece_coords[0], selected_piece_coords[1]-2)]
+                           (selected_piece_coords[0]-2, selected_piece_coords[1]),
+                           (selected_piece_coords[0], selected_piece_coords[1]+2),
+                           (selected_piece_coords[0], selected_piece_coords[1]-2)]
+        if player == 2:
+            for i in range(4):
+                neighbor_piece = self.get_piece(neighbor_coords[i])
+                if neighbor_piece is None:
+                    continue
+                # check neighbor to see which capture behavior to use
+                if neighbor_piece.player == 1:
+                    if neighbor_of_neighbor_coords[i] in special_coords:
+                        capture_coords.append(neighbor_coords[i])
+                    else:
+                        neighbor_of_neighbor_piece = self.get_piece(neighbor_of_neighbor_coords[i])
+                        if neighbor_of_neighbor_piece and (neighbor_of_neighbor_piece.player == 2):
+                            capture_coords.append(neighbor_coords[i])
+
+                elif neighbor_piece.player == 3:
+                    throne_adj_coords = [ (3,4), (5,4), (4,3), (4,5)]
+                    if neighbor_of_neighbor_coords[i] in special_coords and neighbor_of_neighbor_coords != (4,4):
+                        capture_coords.append(neighbor_coords[i])
+                    elif neighbor_coords[i] in throne_adj_coords:
+                        #  -- THRONE ADJ CAPTURES --
+                        throne_adj_capture = True
+                        throne_adj_adj_coords = [(neighbor_coords[i][0]+1, neighbor_coords[i][1]),
+                           (neighbor_coords[i][0]-1, neighbor_coords[i][1]),
+                           (neighbor_coords[i][0], neighbor_coords[i][1]+1),
+                           (neighbor_coords[i][0], neighbor_coords[i][1]-1)]
+                        for coords in throne_adj_adj_coords:
+                            throne_adj_adj_piece = self.get_piece(coords)
+                            if coords != (4,4) and (throne_adj_adj_piece is None or throne_adj_adj_piece.player != 2):
+                                throne_adj_capture = False
+                                break
+                        if throne_adj_capture:
+                            capture_coords.append(neighbor_coords[i])
+
+
+                    elif neighbor_coords[i] == (4,4):
+                        # -- THRONE CAPTURES --
+                        throne_capture = True
+                        for coords in throne_adj_coords:
+                            throne_adj_piece = self.get_piece(coords)
+                            if throne_adj_piece is None or throne_adj_piece.player != 2:
+                                throne_capture = False
+                                break
+                        if throne_capture:
+                            capture_coords.append(neighbor_coords[i])
+                            
+                    else:
+                        # normal capture
+                        neighbor_of_neighbor_piece = self.get_piece(neighbor_of_neighbor_coords[i])
+                        if neighbor_of_neighbor_piece.player == 2:
+                            capture_coords.append(neighbor_coords[i])
+        else:
+            for i in range(4):
+                neighbor_piece = self.get_piece(neighbor_coords[i])
+                # if neighbor piece is not an enemy no capture at these neighbor coords so go to the next iteration
+                if neighbor_piece is None or neighbor_piece.player != 2:
+                    continue
+                # check if neighbor of neighbor is a special tile. if so, then it is a capture
+                elif neighbor_of_neighbor_coords[i] in special_coords:
+                    capture_coords.append(neighbor_coords[i])
+                    continue
+                # check if neighbor of neighbor is an allied piece. if so, then it is a capture
+                neighbor_of_neighbor_piece = self.get_piece(neighbor_of_neighbor_coords[i])
+                if neighbor_of_neighbor_piece and (neighbor_of_neighbor_piece.player == 1 or neighbor_of_neighbor_piece == 3):
+                    capture_coords.append(neighbor_coords[i])
         
-        for i in range(4):
-            neighbor_piece = self.get_piece(neighbor_coords[i])
-            neighbor_of_neighbor_piece = self.get_piece(neighbor_of_neighbor_coords[i])
-            
-            if neighbor_piece is None and neighbor_of_neighbor_piece is None and \
-                neighbor_of_neighbor_piece not in self.game.escape_coords and \
-                    neighbor_of_neighbor_piece != self.game.throne_coords:
-                break
-            
-            if player == 1:
-                if neighbor_piece.player == 2 and (neighbor_of_neighbor_piece.player == 1 or
-                                                   neighbor_of_neighbor_piece.player == 3 or
-                                                   neighbor_of_neighbor_coords[i] in
-                                                   self.game.escape_coords or
-                                                   neighbor_of_neighbor_coords[i] == self.game.throne_coord):
-                    pass
-                    
-            else:
-                pass
+        return capture_coords
+
+    def check_for_game_won(self):
+        """ returns which player has won. if 0 is returned, the game is not over """
+        all_moscuvites_captured = True
+        king_captured = True
+        king_escaped = True
+        for piece in self.game_pieces:
+            if piece.player == 2:
+                all_moscuvites_captured = False
+            elif piece.player == 3:
+                king_captured = False
+                king_coords = (piece.x,piece.y)
+                escape_coords = [(0, 0), (0, 8),
+                                (8, 0), (8, 8)]
+                if king_coords not in escape_coords:
+                    king_escaped = False
+        if king_captured:
+            return 2
+        elif king_escaped or all_moscuvites_captured:
+            return 1
+        else:
+            return 0
+                
 
 
 class Game:
@@ -300,7 +378,7 @@ class Game:
         self.prev_boards = []
         
         self.player = 1
-        self.over = False
+        self.winner = 0 # 0 indicates game in progress, 1 indicates P1 win, 2 for P2 win
         return
         
     def get_current_board(self):
@@ -344,6 +422,7 @@ class Game:
 
             self.prev_boards.append(self.current_board)
             self.current_board = board_copy
+            self.winner = self.current_board.check_for_game_won()
 
             # notify
 

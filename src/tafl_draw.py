@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 #Tested to be compatible with python 3.2 and 2.7 and pygame for those versions
 import pygame,sys,math,random, time, tafl
@@ -143,7 +144,7 @@ player_2 = Player(2)
 clock = pygame.time.Clock( )
 
 #GAME LOOP
-while not game.over:
+while game.winner == 0:
 
 	for event in pygame.event.get( ):
 		if event.type == QUIT:
@@ -190,6 +191,9 @@ while not game.over:
 	draw_board(screen, game, mouse_coords, selected_coords)
 	if selected_coords:
 		draw_valid_moves(screen, game, mouse_coords, selected_coords)
+
+	# check if game is over
+	
 	
 	# refresh
 	pygame.display.flip()
@@ -197,5 +201,5 @@ while not game.over:
 	# tick the clock at FPS
 	time_passed = clock.tick( FPS )
 
-print("game over")
+print("Game Over! Player " + str(game.winner) + " wins.")
 sys.exit()
