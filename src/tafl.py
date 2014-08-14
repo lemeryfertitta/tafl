@@ -148,6 +148,18 @@ class Board:
             board_copy.move_piece(selected_piece_coords, next_move)            
             moves[hash(board_copy)] = board_copy
         return moves
+    def get_possible_next_boards(self, selected_piece_coords):
+        """get_possible_next_moves
+        Returns a dictionary of the next possible moves based on the current configuration. 
+        The key is the hash for the board configuration and the value is the board object itself. """
+        moves = []
+        piece = self.get_piece(selected_piece_coords)
+        next_move_coords = self.get_possible_next_coords(selected_piece_coords,piece.player)
+        for next_move in next_move_coords:
+            board_copy = self.clone()
+            board_copy.move_piece(selected_piece_coords, next_move)            
+            moves.append(board_copy)
+        return moves
     
     def get_possible_next_coords(self, selected_piece_coords, player):
         """get_possible_next_coords
@@ -279,7 +291,7 @@ class Board:
                     continue
                 # check neighbor to see which capture behavior to use
                 if neighbor_piece.player == 1:
-                    if neighbor_of_neighbor_coords[i] in special_coords:
+                    if neighbor_of_neighbor_coords[i] in special_coords and (neighbor_of_neighbor_coords[i] != (4,4) or not self.get_piece((4,4))):
                         capture_coords.append(neighbor_coords[i])
                     else:
                         neighbor_of_neighbor_piece = self.get_piece(neighbor_of_neighbor_coords[i])
@@ -320,7 +332,7 @@ class Board:
                     else:
                         # normal capture
                         neighbor_of_neighbor_piece = self.get_piece(neighbor_of_neighbor_coords[i])
-                        if neighbor_of_neighbor_piece.player == 2:
+                        if neighbor_of_neighbor_piece and neighbor_of_neighbor_piece.player == 2:
                             capture_coords.append(neighbor_coords[i])
         else:
             for i in range(4):

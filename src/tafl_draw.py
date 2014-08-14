@@ -1,7 +1,7 @@
 
 #!/usr/bin/env python
 #Tested to be compatible with python 3.2 and 2.7 and pygame for those versions
-import pygame,sys,math,random, time, tafl
+import pygame,sys,math,random, time, tafl, tafl_ai
 from pygame.locals import *
 
 #COLOUR and variable initialization
@@ -166,18 +166,35 @@ while game.winner == 0:
 					piece = game.current_board.get_piece(mouse_coords)
 					if piece.player == game.player or (piece.player == 3 and game.player == 1):
 						selected_coords = mouse_coords
+		elif event.type == pygame.KEYDOWN:
+			if event.key == pygame.K_1:
+				if player_1.human:
+					player_1.human = False
+				else:
+					player_1.human = True
+			elif event.key == pygame.K_2:
+				if player_2.human:
+					player_2.human = False
+				else:
+					player_2.human = True
 
 	#AI PLAYERS
 	if game.player == 1 and not player_1.human:
 		timer = time.clock()
-		# DO AI MOVE HERE
+		next_board = tafl_ai.get_move(game.current_board, 1)
+		game.prev_boards.append(game.current_board)
+		game.current_board = next_board
+		game.winner = game.current_board.check_for_game_won()
 		timer = time.clock()-timer
 		print("Seconds to calculate: ",timer)
 		game.player = 2
 
 	if game.player == 2 and not player_2.human:
 		time1 = time.clock()
-		# DO AI MOVE HERE
+		next_board = tafl_ai.get_move(game.current_board, 2)
+		game.prev_boards.append(game.current_board)
+		game.current_board = next_board
+		game.winner = game.current_board.check_for_game_won()
 		time2 = time.clock()
 		think_time = time2 - time1
 		print("Seconds to calculate: ", think_time)
